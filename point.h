@@ -28,7 +28,7 @@ public:
 class Path {
 public:
     Path(){
-        path_value = 0;
+        path_value = POINTS * VALUE_MAX;
     }
     Path(const Path& p){
         path = p.path;

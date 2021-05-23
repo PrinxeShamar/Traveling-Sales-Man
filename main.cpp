@@ -5,12 +5,14 @@
 #include <time.h>
 #include <vector>
 #include <algorithm>
+#include <chrono>
+#include <thread>
 
 using namespace std;
 
-int POINTS = 100;
+int POINTS = 8;
 int POP_SIZE = 100;
-int GENERATIONS = 10000;
+int GENERATIONS = 100;
 int VALUE_MAX = 1000;
 int ROUTES = (0.5)*(POINTS-1)*(POINTS);
 
@@ -56,27 +58,8 @@ Path* random_distribution(vector<Path*>& parents, vector<double>& distribution){
     return parents.back();
 }
 
-int main(){
-    srand(time(0));
-
-    vector<Point*> points;
-    for(int i = 0; i < POINTS; i++){
-        points.push_back(new Point(i));
-    }
-    int total = 0;
-    for(int i = 0; i < POINTS; i++){
-        for(int x = i+1; x < POINTS; x++){
-            int value = (rand() % VALUE_MAX) + 1;
-            total += value;
-            points[i]->add_route(points[x], value);
-        }
-    }
-    
-    double value_per_route = (double) total / ROUTES;
-    cout << "Routes: " << ROUTES << " AVG: " << value_per_route << endl;
-
+void GeneticAlgorithm(vector<Point*>& points){
     vector<Path*> parents; 
-
     int generation = 0;
     if(generation == 0){
         int count = 0;
@@ -122,4 +105,63 @@ int main(){
         parents = new_generation;
     }
     best_generation_path.print_path();
+}
+
+void BruteForce(const vector<Point*>& points, Path& path, Path& best_part, int index = 0){
+    vector<int> points_left;
+    for(int i = 0; i < POINTS; i++){
+        if(find(path.path.begin(), path.path.end(), points[i]) == path.path.end()){
+            points_left.push_back(i);
+        }
+    }
+    if(points_left.size() > 0){
+        for(int i = 0; i < points_left.size(); i++){
+            path.add_point(points[points_left[i]]);
+            BruteForce(points, path, best_part, points_left[i]);
+            path.path.pop_back();
+        }
+    }else{
+        path.calculate_path_value();
+        if(best_part.path_value > path.path_value){
+            best_part = path;
+        }
+    }
+}
+
+void BruteForce(const vector<Point*>& points){
+    Path path, best_path;
+    BruteForce(points, path, best_path);
+    best_path.print_path();
+}
+
+int main(){
+    srand(time(0));
+
+    vector<Point*> points;
+    for(int i = 0; i < POINTS; i++){
+        points.push_back(new Point(i));
+    }
+    int total = 0;
+    for(int i = 0; i < POINTS; i++){
+        for(int x = i+1; x < POINTS; x++){
+            int value = (rand() % VALUE_MAX) + 1;
+            total += value;
+            points[i]->add_route(points[x], value);
+        }
+    }
+    
+    double value_per_route = (double) total / ROUTES;
+    cout << "Routes: " << ROUTES << " AVG: " << value_per_route << endl;
+
+    cout << "BRUTE FORCE BEST ";
+    auto brute_force_start = std::chrono::high_resolution_clock::now();
+    BruteForce(points);
+    auto brute_force_end = std::chrono::high_resolution_clock::now();
+    cout << "BRUTE FORCE TIME: " << std::chrono::duration_cast<std::chrono::milliseconds>(brute_force_end-brute_force_start).count() << "ms" << endl;
+
+    cout << "GENETIC ALGORITHM BEST ";
+    auto gen_algo_start = std::chrono::high_resolution_clock::now();    
+    GeneticAlgorithm(points);
+    auto gen_algo_end = std::chrono::high_resolution_clock::now();
+    cout << "GENETIC ALGORITHM TIME: " << std::chrono::duration_cast<std::chrono::milliseconds>(gen_algo_end-gen_algo_start).count() << "ms" << endl;
 }
